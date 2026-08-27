@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>The Grandeur We Choose</title>
+  <style>
+    :root { --bg:#090a12; --panel:rgba(255,255,255,.055); --text:#f8f4ea; --muted:#b9b4a8; --accent:#f2c86b; --radius:24px; --gap:18px; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 50% -10%,#3a2b1a 0,#15131b 34%,#090a12 70%); color:var(--text); font:16px/1.7 Georgia,"Times New Roman",serif; }
+    body:before { content:""; position:fixed; inset:0; pointer-events:none; background:linear-gradient(115deg,transparent 0 44%,rgba(242,200,107,.06) 50%,transparent 56%); }
+    button,input { font:inherit; }
+    button { border:0; border-radius:999px; padding:11px 16px; background:var(--accent); color:#15100a; cursor:pointer; font-weight:700; }
+    input { width:100%; border:1px solid #514936; border-radius:12px; padding:10px 12px; background:#0f1018; color:var(--text); }
+    .shell { width:min(1080px,calc(100% - 32px)); margin:0 auto; padding:72px 0 90px; }
+    .row { display:flex; gap:var(--gap); align-items:stretch; flex-wrap:wrap; }
+    .column { display:flex; flex-direction:column; gap:var(--gap); }
+    .card { flex:1 1 280px; padding:26px; border:1px solid rgba(242,200,107,.18); border-radius:var(--radius); background:var(--panel); box-shadow:0 18px 50px #0005; backdrop-filter:blur(14px); }
+    .muted { color:var(--muted); }
+    .grow { flex:1 1 240px; }
+    .list { display:grid; gap:10px; }
+    .list-item { display:flex; justify-content:space-between; gap:12px; padding:12px; border-radius:10px; background:#0f1629; }
+    h1,h2,p { margin:0; }
+    h1 { max-width:900px; font-size:clamp(3rem,10vw,7.6rem); line-height:.92; letter-spacing:-.055em; font-weight:500; }
+    h2 { font-size:1.35rem; color:var(--accent); letter-spacing:.02em; }
+    .eyebrow { color:var(--accent); text-transform:uppercase; letter-spacing:.22em; font:700 .75rem/1.2 system-ui,sans-serif; }
+    .lead { max-width:760px; font-size:clamp(1.15rem,2.3vw,1.55rem); color:#d9d4ca; }
+    .closing { padding:40px 8px 0; font-size:clamp(1.5rem,4vw,3rem); line-height:1.16; max-width:920px; }
+    @media (max-width:640px){ .shell{padding-top:48px} .card{padding:22px} }
+  </style>
+</head>
+<body>
+  <main id="app" class="shell"></main>
+
+  <script>
+    /* EDIT THIS BLOCK. Everything below is reusable machinery. */
+    const APP = {
+  "template": "dashboard",
+  "seed": "grandeur-we-choose",
+  "title": "The Grandeur We Choose",
+  "initialState": {
+    "draft": "",
+    "tasks": []
+  },
+  "overrides": {
+    "accent": "#f2c86b"
+  }
+};
+  </script>
+
+  <script>
+    /* Algebraic constructors */
+    const N = (type, props = {}, children = []) => ({ type, props, children: Array.isArray(children) ? children : [children] });
+    const Text = props => N("Text", typeof props === "string" ? { text: props } : props);
+    const Button = props => N("Button", props);
+    const Input = props => N("Input", props);
+    const Row = (...children) => N("Row", {}, children.flat());
+    const Column = (...children) => N("Column", {}, children.flat());
+    const Card = (...children) => N("Card", {}, children.flat());
+    const List = props => N("List", props);
+    const When = (condition, yes, no = null) => condition ? yes : no;
+    const Repeat = (count, factory) => Array.from({ length: count }, (_, index) => factory(index));
+
+    const hashSeed = seed => [...String(seed)].reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 2166136261);
+    const seededAccent = seed => `hsl(${hashSeed(seed) % 360} 85% 70%)`;
+
+    const TEMPLATES = {
+      "task-tracker": config => Column(
+        Row(
+          Column(Text({ tag: "h1", text: config.title }), Text({ text: "A top-level specification resolving through a reusable component algebra.", class: "muted" }))
+        ),
+        Card(
+          Row(
+            Input({ bind: "draft", placeholder: "New task", class: "grow" }),
+            Button({ text: "Add", action: "addTask" })
+          ),
+          List({ source: "tasks", itemTemplate: "task" })
+        )
+      ),
+      "dashboard": config => Column(
+        Text({ text: "A MANIFESTO FOR A BRIGHTER CIVILIZATION", class: "eyebrow" }),
+        Text({ tag: "h1", text: config.title }),
+        Text({ text: "Truth should be clear enough to understand, beautiful enough to approach, and brave enough to survive examination. We seek power disciplined into stewardship, brilliance softened by kindness, and a future people genuinely want to inhabit.", class: "lead" }),
+        Row(
+          Card(
+            Text({ tag: "h2", text: "Truth" }),
+            Text({ text: "Say the thing clearly. Let reality test it. Let weak ideas break and strong ones remain. Truth does not need cruelty to become courageous." })
+          ),
+          Card(
+            Text({ tag: "h2", text: "Beauty" }),
+            Text({ text: "Beauty is not decoration around serious work. It is one of the ways worthy ideas become memorable, desirable, and human." })
+          ),
+          Card(
+            Text({ tag: "h2", text: "Brilliance" }),
+            Text({ text: "Become exceptionally capable. Learn, build, refine, and see farther—then let greater intelligence produce greater responsibility rather than greater contempt." })
+          )
+        ),
+        Row(
+          Card(
+            Text({ tag: "h2", text: "Dignity" }),
+            Text({ text: "Bring people with you. Correct without humiliating. Persuade without deceiving. Leave people larger than you found them." })
+          ),
+          Card(
+            Text({ tag: "h2", text: "Endeavor" }),
+            Text({ text: "We are not promised success. We are given hands, minds, language, memory, machines, and one another. The material is here. Build something magnificent with it." })
+          )
+        ),
+        Text({ text: "Not a kingdom of obedience. A kingdom of possibility. Not one light demanding darkness around it—but a constellation, bright enough together that nobody has to pretend the night does not exist.", class: "closing" })
+      ),
+      "form": config => Column(
+        Text({ tag: "h1", text: config.title }),
+        Card(
+          Input({ bind: "name", placeholder: "Name" }),
+          Input({ bind: "email", placeholder: "Email" }),
+          Button({ text: "Submit", action: "submit" })
+        )
+      ),
+      "blank": config => Card(Text({ tag: "h1", text: config.title }), Text({ text: "Ready for a specification.", class: "muted" }))
+    };
+
+    const state = structuredClone(APP.initialState || {});
+    let nextId = Math.max(0, ...(state.tasks || []).map(task => task.id || 0)) + 1;
+
+    const ACTIONS = {
+      addTask() {
+        const title = String(state.draft || "").trim();
+        if (!title) return;
+        state.tasks ||= [];
+        state.tasks.push({ id: nextId++, title, done: false });
+        state.draft = "";
+        render();
+      },
+      toggleTask({ id }) {
+        const task = (state.tasks || []).find(item => item.id === id);
+        if (task) task.done = !task.done;
+        render();
+      },
+      submit() { alert(JSON.stringify(state, null, 2)); }
+    };
+
+    const ITEM_TEMPLATES = {
+      task: item => N("Raw", {}, [
+        Object.assign(document.createElement("div"), { className: "list-item" })
+      ], { item })
+    };
+
+    const COMPONENTS = {
+      Text(node) {
+        const element = document.createElement(node.props.tag || "p");
+        element.textContent = node.props.text ?? "";
+        if (node.props.class) element.className = node.props.class;
+        return element;
+      },
+      Button(node) {
+        const element = document.createElement("button");
+        element.textContent = node.props.text || "Button";
+        element.addEventListener("click", () => ACTIONS[node.props.action]?.(node.props.args || {}));
+        return element;
+      },
+      Input(node) {
+        const element = document.createElement("input");
+        element.placeholder = node.props.placeholder || "";
+        element.value = state[node.props.bind] ?? "";
+        if (node.props.class) element.className = node.props.class;
+        element.addEventListener("input", event => { state[node.props.bind] = event.target.value; });
+        element.addEventListener("keydown", event => { if (event.key === "Enter") ACTIONS.addTask(); });
+        return element;
+      },
+      Row: container("div", "row"),
+      Column: container("div", "column"),
+      Card: container("section", "card column"),
+      List(node) {
+        const element = document.createElement("div");
+        element.className = "list";
+        for (const item of state[node.props.source] || []) {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const label = document.createElement("span");
+          label.textContent = item.title;
+          if (item.done) label.style.textDecoration = "line-through";
+          const toggle = document.createElement("button");
+          toggle.textContent = item.done ? "Undo" : "Done";
+          toggle.addEventListener("click", () => ACTIONS.toggleTask({ id: item.id }));
+          row.append(label, toggle);
+          element.append(row);
+        }
+        return element;
+      }
+    };
+
+    function container(tag, className) {
+      return node => {
+        const element = document.createElement(tag);
+        element.className = className;
+        for (const child of node.children.filter(Boolean)) element.append(compile(child));
+        return element;
+      };
+    }
+
+    function compile(node) {
+      if (node instanceof Node) return node;
+      if (Array.isArray(node)) {
+        const fragment = document.createDocumentFragment();
+        node.filter(Boolean).forEach(child => fragment.append(compile(child)));
+        return fragment;
+      }
+      if (!node || !COMPONENTS[node.type]) throw new Error(`Unknown component: ${node?.type}`);
+      const element = COMPONENTS[node.type](node);
+      if (!["Row", "Column", "Card"].includes(node.type)) {
+        for (const child of node.children.filter(Boolean)) element.append(compile(child));
+      }
+      return element;
+    }
+
+    function resolve(config) {
+      const template = TEMPLATES[config.template] || TEMPLATES.blank;
+      return template({ ...config, ...(config.overrides || {}) });
+    }
+
+    function render() {
+      document.documentElement.style.setProperty("--accent", APP.overrides.accent || seededAccent(APP.seed));
+      const mount = document.querySelector("#app");
+      mount.replaceChildren(compile(resolve(APP)));
+    }
+
+    render();
+  </script>
+</body>
+</html>
