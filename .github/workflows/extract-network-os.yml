@@ -1,0 +1,28 @@
+name: Extract Network OS V0.2
+
+on:
+  push:
+    branches: [network-os-v02]
+    paths: [network-os-v02.zip]
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source package
+        run: |
+          rm -rf network-os-v02
+          unzip -q network-os-v02.zip -d .
+      - name: Commit extracted source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add network-os-v02
+          if ! git diff --cached --quiet; then
+            git commit -m "Extract Network OS V0.2 source"
+            git push
+          fi
