@@ -1,4 +1,4 @@
-name: Reality Loom Autopilot Monitor
+name: Reality Loom System Monitor
 
 on:
   schedule:
@@ -9,15 +9,13 @@ on:
     paths:
       - "tools/system_monitor.py"
       - ".github/workflows/system-monitor.yml"
-      - "docs/reality-loom/**"
-      - "docs/control-center/index.html"
 
 permissions:
-  contents: write
+  contents: read
   actions: read
 
 concurrency:
-  group: reality-loom-autopilot-monitor
+  group: reality-loom-system-monitor
   cancel-in-progress: true
 
 jobs:
@@ -36,14 +34,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python tools/system_monitor.py
-      - name: Publish status to Control Center
-        run: |
-          git config user.name "reality-loom-agent[bot]"
-          git config user.email "reality-loom-agent[bot]@users.noreply.github.com"
-          git add docs/control-center/status.json
-          if git diff --cached --quiet; then
-            echo "Status unchanged."
-          else
-            git commit -m "chore(autopilot): update system health"
-            git push
-          fi
+      - name: Preserve report as a CI artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-monitor-${{ github.run_id }}
+          path: reports/system-monitor/status.json
+          if-no-files-found: warn
+          retention-days: 30
