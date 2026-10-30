@@ -1,0 +1,49 @@
+name: Reality Loom Autopilot Monitor
+
+on:
+  schedule:
+    - cron: "23,53 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - "tools/system_monitor.py"
+      - ".github/workflows/system-monitor.yml"
+      - "docs/reality-loom/**"
+      - "docs/control-center/index.html"
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: reality-loom-autopilot-monitor
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run system checks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python tools/system_monitor.py
+      - name: Publish status to Control Center
+        run: |
+          git config user.name "reality-loom-agent[bot]"
+          git config user.email "reality-loom-agent[bot]@users.noreply.github.com"
+          git add docs/control-center/status.json
+          if git diff --cached --quiet; then
+            echo "Status unchanged."
+          else
+            git commit -m "chore(autopilot): update system health"
+            git push
+          fi
