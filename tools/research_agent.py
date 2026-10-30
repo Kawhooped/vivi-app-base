@@ -39,7 +39,7 @@ def github_search(query: str, token: str) -> list[dict]:
 def rank_candidate(repo: dict) -> int:
     stars = max(0, int(repo.get("stargazers_count") or 0))
     score = min(40, int(math.log10(stars + 1) * 10))
-    if repo.get("license", {}).get("spdx_id") not in (None, "NOASSERTION"):
+    if (repo.get("license") or {}).get("spdx_id") not in (None, "NOASSERTION"):
         score += 20
     if repo.get("archived"):
         score -= 35
