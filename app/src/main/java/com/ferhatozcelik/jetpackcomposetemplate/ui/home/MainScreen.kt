@@ -22,6 +22,7 @@ import androidx.navigation.NavHostController
 private data class Device(val name: String, val purpose: String, val pipeline: String, val status: String)
 
 private val devices = listOf(
+    Device("Reality Loom", "A modular physical-world sandbox: 3D space, rigid-body physics, time controls and inspectable entities.", "Space → Physics → Time → Observe", "PROTOTYPE"),
     Device("Story Device", "Turn prompts into coherent worlds, characters and events. Track rules, conflicts and consequences as the story develops.", "Prompt → Interpret → Build → Simulate → Continue", "READY TO USE"),
     Device("City Simulator", "Represent a city as connected systems: residents, housing, work, transit, health, education, environment and public resources.", "Observe → Model → Change → Simulate → Compare", "NEXT"),
     Device("World Builder", "Create reusable environments with entities, properties, relationships, rules, states and events.", "Define → Populate → Connect → Inspect", "PLANNED"),
@@ -50,6 +51,7 @@ fun MainScreen(viewModel: HomeViewModel = hiltViewModel(), navController: NavHos
             Card(
                 modifier = Modifier.fillMaxWidth().then(
                     if (device.name == "Story Device") Modifier.clickable { navController.navigate("story_device") }
+                    else if (device.name == "Reality Loom") Modifier.clickable { navController.navigate("reality_loom") }
                     else Modifier
                 ),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -59,7 +61,7 @@ fun MainScreen(viewModel: HomeViewModel = hiltViewModel(), navController: NavHos
                     Text(device.name, style = MaterialTheme.typography.titleLarge)
                     Text(device.purpose, style = MaterialTheme.typography.bodyMedium)
                     Text(device.pipeline, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
-                    if (device.name == "Story Device") Text("OPEN DEVICE  →", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    if (device.name == "Story Device" || device.name == "Reality Loom") Text("OPEN DEVICE  →", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
