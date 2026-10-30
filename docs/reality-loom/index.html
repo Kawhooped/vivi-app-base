@@ -70,7 +70,7 @@ const registry=[
 ];
 $('modules').innerHTML=registry.map(([n,d,s])=>'<div class="module"><div><b>'+n+'</b><div class="sub">'+d+'</div></div><span class="tag">'+s+'</span></div>').join('');
 
-let world,renderer,scene,camera,orbit,ground,paused=false,simTime=0,steps=0,last=performance.now(),fpsFrames=0,fpsAt=last;
+let world,renderer,scene,camera,orbit,ground,paused=false,simTime=0,steps=0,accumulator=0,last=performance.now(),fpsFrames=0,fpsAt=last;
 const entities=[];const fixedDt=1/60;
 const viewport=$('viewport');
 const sceneObjects=new Map();
@@ -81,7 +81,7 @@ function createBody(x,y,z,r=0.35,mass=1){
  const body=world.createRigidBody(desc);
  world.createCollider(RAPIER.ColliderDesc.ball(r).setRestitution(.42).setFriction(.65).setDensity(mass),body);
  const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,20,14),new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL((entities.length*.618)%1,.68,.58),roughness:.45,metalness:.12}));
- scene.add(mesh);
+ mesh.castShadow=true;scene.add(mesh);
  const item={id:'entity-'+String(entities.length+1).padStart(3,'0'),body,mesh,radius:r,mass};
  entities.push(item);sceneObjects.set(mesh,item);return item;
 }
@@ -93,7 +93,7 @@ function initWorld(){
  world.createCollider(RAPIER.ColliderDesc.cuboid(12,.25,12).setFriction(.9),floorBody);
  const n=Number($('count').value);
  for(let i=0;i<n;i++){const x=((i%7)-3)*.85,z=(Math.floor(i/7)-2)*.85,y=1.1+Math.floor(i/21)*.9+Math.random()*.3;createBody(x,y,z,.27+Math.random()*.13,.5+Math.random()*2)}
- simTime=0;steps=0;sync();updateStats();
+ simTime=0;steps=0;accumulator=0;sync();updateStats();
 }
 async function boot(){
  await RAPIER.init();
@@ -113,14 +113,21 @@ async function boot(){
 function resize(){if(!renderer)return;const w=viewport.clientWidth,h=viewport.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()}
 function frame(now){
  const elapsed=Math.min((now-last)/1000,.05);last=now;
- if(!paused){const scaled=elapsed*Number($('speed').value);let remaining=scaled;while(remaining>0){const dt=Math.min(fixedDt,remaining);world.timestep=dt;world.gravity={x:0,y:-Number($('gravity').value),z:0};world.step();simTime+=dt;steps++;remaining-=dt}}
+ if(!paused){
+  accumulator+=elapsed*Number($('speed').value);
+  let catchup=0;
+  while(accumulator>=fixedDt && catchup<8){
+   world.timestep=fixedDt;world.gravity={x:0,y:-Number($('gravity').value),z:0};
+   world.step();simTime+=fixedDt;steps++;accumulator-=fixedDt;catchup++;
+  }
+ } else { accumulator=0; }
  sync();orbit.update();renderer.render(scene,camera);fpsFrames++;
  if(now-fpsAt>500){$('fps').textContent=Math.round(fpsFrames*1000/(now-fpsAt));fpsFrames=0;fpsAt=now;updateStats()}
 }
 function updateStats(){$('bodyCount').textContent=entities.length;$('simTime').textContent=simTime.toFixed(1)+'s';$('frameCount').textContent=steps}
 function pick(ev){const rect=renderer.domElement.getBoundingClientRect(),mouse=new THREE.Vector2((ev.clientX-rect.left)/rect.width*2-1,-((ev.clientY-rect.top)/rect.height)*2+1),ray=new THREE.Raycaster();ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(entities.map(e=>e.mesh))[0];const box=$('inspector');if(!hit){box.style.display='none';return}const e=sceneObjects.get(hit.object),p=e.body.translation(),v=e.body.linvel();box.style.display='block';box.innerHTML='<b>'+e.id+'</b><br>Position: '+[p.x,p.y,p.z].map(n=>n.toFixed(2)).join(', ')+'<br>Velocity: '+[v.x,v.y,v.z].map(n=>n.toFixed(2)).join(', ')+'<br>Mass: '+e.mass.toFixed(2)+' · radius: '+e.radius.toFixed(2)}
 function save(){const data={version:1,simTime,steps,gravity:Number($('gravity').value),entities:entities.map(e=>({id:e.id,position:e.body.translation(),rotation:e.body.rotation(),velocity:e.body.linvel(),angularVelocity:e.body.angvel(),radius:e.radius,mass:e.mass}))};localStorage.setItem('reality-loom-save',JSON.stringify(data));setStatus('World saved locally')}
-function load(){const raw=localStorage.getItem('reality-loom-save');if(!raw){setStatus('No saved world found');return}try{const data=JSON.parse(raw);$('gravity').value=data.gravity;$('gravityLabel').textContent=Number(data.gravity).toFixed(1);entities.splice(0).forEach(e=>scene.remove(e.mesh));world=new RAPIER.World({x:0,y:-data.gravity,z:0});const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.25,0));world.createCollider(RAPIER.ColliderDesc.cuboid(12,.25,12).setFriction(.9),floorBody);for(const item of data.entities){const e=createBody(item.position.x,item.position.y,item.position.z,item.radius,item.mass);e.body.setRotation(item.rotation,true);e.body.setLinvel(item.velocity,true);e.body.setAngvel(item.angularVelocity,true)}simTime=data.simTime;steps=data.steps;sync();updateStats();setStatus('World restored')}catch(e){setStatus('Save file could not be read')}}
+function load(){const raw=localStorage.getItem('reality-loom-save');if(!raw){setStatus('No saved world found');return}try{const data=JSON.parse(raw);$('gravity').value=data.gravity;$('gravityLabel').textContent=Number(data.gravity).toFixed(1);entities.splice(0).forEach(e=>scene.remove(e.mesh));world=new RAPIER.World({x:0,y:-data.gravity,z:0});const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.25,0));world.createCollider(RAPIER.ColliderDesc.cuboid(12,.25,12).setFriction(.9),floorBody);for(const item of data.entities){const e=createBody(item.position.x,item.position.y,item.position.z,item.radius,item.mass);e.body.setRotation(item.rotation,true);e.body.setLinvel(item.velocity,true);e.body.setAngvel(item.angularVelocity,true)}simTime=data.simTime;steps=data.steps;accumulator=0;sync();updateStats();setStatus('World restored')}catch(e){setStatus('Save file could not be read')}}
 $('toggle').onclick=()=>{paused=!paused;$('toggle').textContent=paused?'Resume':'Pause'};
 $('step').onclick=()=>{if(!paused)paused=true;$('toggle').textContent='Resume';world.timestep=fixedDt;world.step();simTime+=fixedDt;steps++;sync();updateStats()};
 $('reset').onclick=()=>{initWorld();setStatus('World reset')};
