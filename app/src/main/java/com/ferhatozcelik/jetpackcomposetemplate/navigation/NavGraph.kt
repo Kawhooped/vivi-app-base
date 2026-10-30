@@ -9,12 +9,16 @@ import androidx.navigation.navArgument
 import com.ferhatozcelik.jetpackcomposetemplate.ui.detail.DetailScreen
 import com.ferhatozcelik.jetpackcomposetemplate.ui.home.MainScreen
 import com.ferhatozcelik.jetpackcomposetemplate.ui.story.StoryDeviceScreen
+import com.ferhatozcelik.jetpackcomposetemplate.ui.realityloom.RealityLoomScreen
 
 @Composable
 fun NavGraph(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Screen.Main.route) {
         composable(Screen.Main.route) {
             MainScreen(navController = navController)
+        }
+        composable(Screen.RealityLoom.route) {
+            RealityLoomScreen(navController = navController)
         }
         composable(Screen.Story.route) {
             StoryDeviceScreen(navController = navController)
