@@ -33,3 +33,13 @@ The Android app is the device launcher and interaction shell. Device logic shoul
 ## Build
 
 Open the project in Android Studio and run the app configuration. The project uses Kotlin, Jetpack Compose, Material 3, Hilt and Room.
+
+## Reality Loom
+
+Reality Loom is the modular simulation engine and first interactive physical-world device.
+
+- Browser prototype: [open the Reality Loom source](docs/reality-loom/index.html)
+- Module catalog and adapter contract: [docs/reality-loom/MODULES.md](docs/reality-loom/MODULES.md)
+- Android launcher: Reality Loom is available as a device entry and is hosted in a WebView using the bundled asset at `app/src/main/assets/reality-loom/index.html`.
+
+The current prototype includes 3D space, Rapier rigid-body physics, gravity, collisions, a fixed-step clock, pause/resume, single-step, time scaling, entity inspection and local save/restore. Additional domains remain separate modules until their adapters and tests are ready.
