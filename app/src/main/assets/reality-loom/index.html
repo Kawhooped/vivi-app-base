@@ -54,7 +54,7 @@ import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples
 import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.17.3/+esm';
 
 const $=id=>document.getElementById(id);
-const registry=[
+const moduleCatalog=[
 ['Physical space','coordinates, transforms, geometry','ACTIVE'],
 ['Rigid-body physics','mass, gravity, collision, friction','ACTIVE'],
 ['Simulation clock','fixed steps, pause, speed, replay','ACTIVE'],
@@ -68,12 +68,28 @@ const registry=[
 ['Robotics','joints, motors, sensors','PLANNED'],
 ['Experiment recorder','snapshots, branches, comparisons','PLANNED']
 ];
-$('modules').innerHTML=registry.map(([n,d,s])=>'<div class="module"><div><b>'+n+'</b><div class="sub">'+d+'</div></div><span class="tag">'+s+'</span></div>').join('');
+$('modules').innerHTML=moduleCatalog.map(([n,d,s])=>'<div class="module"><div><b>'+n+'</b><div class="sub">'+d+'</div></div><span class="tag">'+s+'</span></div>').join('');
 
+class ModuleRegistry {
+ constructor(){this.modules=new Map();}
+ register(module){
+  if(!module.id||!module.version||typeof module.step!=='function')throw new Error('Invalid simulation module contract');
+  if(this.modules.has(module.id))throw new Error('Duplicate module: '+module.id);
+  this.modules.set(module.id,module);
+ }
+ initialize(context){for(const module of this.modules.values())module.initialize?.(context);}
+ step(context,dt){for(const module of this.modules.values())module.step(context,dt);}
+ snapshot(){return Object.fromEntries([...this.modules].map(([id,module])=>[id,module.snapshot?.()??null]));}
+ dispose(){for(const module of this.modules.values())module.dispose?.();this.modules.clear();}
+}
+const moduleRegistry=new ModuleRegistry();
+moduleRegistry.register({id:'physical-space',version:'0.1.0',capabilities:['3d-coordinates','transforms'],step:()=>{}});
+moduleRegistry.register({id:'rigid-body-physics',version:'0.1.0',capabilities:['gravity','collision','rigid-bodies'],step:(ctx,dt)=>{ctx.world.timestep=dt;ctx.world.gravity={x:0,y:-ctx.gravity,z:0};ctx.world.step();}});
 let world,renderer,scene,camera,orbit,ground,paused=false,simTime=0,steps=0,accumulator=0,last=performance.now(),fpsFrames=0,fpsAt=last;
 const entities=[];const fixedDt=1/60;
 const viewport=$('viewport');
 const sceneObjects=new Map();
+const simulationContext={get world(){return world;},get gravity(){return Number($('gravity').value);},get entities(){return entities;},get scene(){return scene;}};
 
 function setStatus(s){$('status').textContent=s}
 function createBody(x,y,z,r=0.35,mass=1){
@@ -105,7 +121,7 @@ async function boot(){
  const light=new THREE.DirectionalLight(0xffffff,2.5);light.position.set(7,12,5);light.castShadow=true;scene.add(light);
  const grid=new THREE.GridHelper(24,24,0x36516a,0x203246);grid.position.y=-.245;scene.add(grid);
  const floor=new THREE.Mesh(new THREE.PlaneGeometry(24,24),new THREE.MeshStandardMaterial({color:0x101d2a,roughness:.9,metalness:.05}));floor.rotation.x=-Math.PI/2;floor.position.y=-.26;floor.receiveShadow=true;scene.add(floor);
- initWorld();setStatus('Physics ready');
+ initWorld();moduleRegistry.initialize(simulationContext);setStatus('Physics ready · '+moduleRegistry.modules.size+' modules loaded');
  renderer.setAnimationLoop(frame);
  window.addEventListener('resize',resize);
  renderer.domElement.addEventListener('pointerdown',pick);
@@ -117,8 +133,7 @@ function frame(now){
   accumulator+=elapsed*Number($('speed').value);
   let catchup=0;
   while(accumulator>=fixedDt && catchup<8){
-   world.timestep=fixedDt;world.gravity={x:0,y:-Number($('gravity').value),z:0};
-   world.step();simTime+=fixedDt;steps++;accumulator-=fixedDt;catchup++;
+   moduleRegistry.step(simulationContext,fixedDt);simTime+=fixedDt;steps++;accumulator-=fixedDt;catchup++;
   }
  } else { accumulator=0; }
  sync();orbit.update();renderer.render(scene,camera);fpsFrames++;
@@ -127,7 +142,7 @@ function frame(now){
 function updateStats(){$('bodyCount').textContent=entities.length;$('simTime').textContent=simTime.toFixed(1)+'s';$('frameCount').textContent=steps}
 function pick(ev){const rect=renderer.domElement.getBoundingClientRect(),mouse=new THREE.Vector2((ev.clientX-rect.left)/rect.width*2-1,-((ev.clientY-rect.top)/rect.height)*2+1),ray=new THREE.Raycaster();ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(entities.map(e=>e.mesh))[0];const box=$('inspector');if(!hit){box.style.display='none';return}const e=sceneObjects.get(hit.object),p=e.body.translation(),v=e.body.linvel();box.style.display='block';box.innerHTML='<b>'+e.id+'</b><br>Position: '+[p.x,p.y,p.z].map(n=>n.toFixed(2)).join(', ')+'<br>Velocity: '+[v.x,v.y,v.z].map(n=>n.toFixed(2)).join(', ')+'<br>Mass: '+e.mass.toFixed(2)+' · radius: '+e.radius.toFixed(2)}
 function save(){const data={version:1,simTime,steps,gravity:Number($('gravity').value),entities:entities.map(e=>({id:e.id,position:e.body.translation(),rotation:e.body.rotation(),velocity:e.body.linvel(),angularVelocity:e.body.angvel(),radius:e.radius,mass:e.mass}))};localStorage.setItem('reality-loom-save',JSON.stringify(data));setStatus('World saved locally')}
-function load(){const raw=localStorage.getItem('reality-loom-save');if(!raw){setStatus('No saved world found');return}try{const data=JSON.parse(raw);$('gravity').value=data.gravity;$('gravityLabel').textContent=Number(data.gravity).toFixed(1);entities.splice(0).forEach(e=>scene.remove(e.mesh));world=new RAPIER.World({x:0,y:-data.gravity,z:0});const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.25,0));world.createCollider(RAPIER.ColliderDesc.cuboid(12,.25,12).setFriction(.9),floorBody);for(const item of data.entities){const e=createBody(item.position.x,item.position.y,item.position.z,item.radius,item.mass);e.body.setRotation(item.rotation,true);e.body.setLinvel(item.velocity,true);e.body.setAngvel(item.angularVelocity,true)}simTime=data.simTime;steps=data.steps;accumulator=0;sync();updateStats();setStatus('World restored')}catch(e){setStatus('Save file could not be read')}}
+function load(){const raw=localStorage.getItem('reality-loom-save');if(!raw){setStatus('No saved world found');return}try{const data=JSON.parse(raw);$('gravity').value=data.gravity;$('gravityLabel').textContent=Number(data.gravity).toFixed(1);entities.splice(0).forEach(e=>{scene.remove(e.mesh);sceneObjects.delete(e.mesh)});world=new RAPIER.World({x:0,y:-data.gravity,z:0});const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.25,0));world.createCollider(RAPIER.ColliderDesc.cuboid(12,.25,12).setFriction(.9),floorBody);for(const item of data.entities){const e=createBody(item.position.x,item.position.y,item.position.z,item.radius,item.mass);e.body.setRotation(item.rotation,true);e.body.setLinvel(item.velocity,true);e.body.setAngvel(item.angularVelocity,true)}simTime=data.simTime;steps=data.steps;accumulator=0;sync();updateStats();setStatus('World restored')}catch(e){setStatus('Save file could not be read')}}
 $('toggle').onclick=()=>{paused=!paused;$('toggle').textContent=paused?'Resume':'Pause'};
 $('step').onclick=()=>{if(!paused)paused=true;$('toggle').textContent='Resume';world.timestep=fixedDt;world.step();simTime+=fixedDt;steps++;sync();updateStats()};
 $('reset').onclick=()=>{initWorld();setStatus('World reset')};
