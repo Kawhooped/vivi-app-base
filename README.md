@@ -1,45 +1,35 @@
-# Jetpack Compose Template
+# Device Studio
 
-Welcome to the Jetpack Compose Template! This template provides a structured starting point for building Android applications using the Jetpack Compose UI toolkit. Jetpack Compose simplifies UI development with a declarative approach, allowing you to create interactive and beautiful UIs with less code.
+An Android home for a growing collection of interactive devices: focused tools that construct models, simulate systems, generate stories and support decisions.
 
-## Project Overview
+## First device family
 
-This project demonstrates the use of Jetpack Compose to create a modern Android app with a clean and maintainable architecture.
+- **Story Device** — prompt → interpret → build → simulate → continue. Builds worlds, characters and events while tracking rules, conflicts and consequences.
+- **City Simulator** — models residents, housing, jobs, transit, healthcare, education, environment and public resources.
+- **World Builder** — reusable entity, property, relationship, rule, state and event models.
+- **Decision Lab** — compares proposals, challenges assumptions and records predictions and outcomes.
 
-### Key Components
+## Shared device architecture
 
-- **Jetpack Compose:** The modern UI toolkit for building native UIs.
-- **ViewModel:** Manage UI-related data and state using the ViewModel architecture component.
-- **Hilt:** Use Hilt for dependency injection, ensuring clean and modular code.
-- **Navigation Component:** Handle navigation between different screens seamlessly.
-- **Coroutines:** Utilize Kotlin's Coroutines for managing asynchronous tasks.
-- **Data Persistence:** Leverage Room for local data storage.
+Every device follows a common contract:
 
-## Getting Started
+1. **Purpose** — what job does this device perform?
+2. **Inputs** — prompts, structured data, observations or user controls.
+3. **Model** — entities, properties, relationships, rules, environment and state.
+4. **Operations** — build, transform, simulate, compare or decide.
+5. **Outputs** — useful results with assumptions and uncertainty visible.
+6. **Memory** — save state, history, experiments and versioned changes.
 
-1. **Clone the Repository:** `git clone https://github.com/ferhatozcelik/jetpack-compose-template.git`
-2. **Open in Android Studio:** Import the project into Android Studio.
-3. **Build and Run:** Build and run the app to see the Jetpack Compose magic in action.
+The Android app is the device launcher and interaction shell. Device logic should remain modular so individual tools can evolve without redesigning the whole application.
 
-## Project Structure
+## Principles
 
-- `app` module: Contains the main application code.
-  - `src/main/java or src/main/kotlin`: Kotlin source code.
-  - `src/main/res`: Resources like layouts, strings, and drawables.
+- Complexity inside, simplicity outside.
+- Evidence over confidence.
+- Separate observations, inferences and unknowns.
+- Preserve experiment history and working versions.
+- No model is treated as reality; validate predictions against outcomes.
 
-## Customize and Extend
+## Build
 
-Feel free to customize and extend this template to match the requirements of your specific project. Experiment with different Composables, UI layouts, and navigation flows to create your unique app.
-
-## Author
-
-👤 Your Name
-
-- GitHub: [@ferhatozcelik](https://github.com/ferhatozcelik)
-- LinkedIn: [Ferhat OZCELIK](https://www.linkedin.com/in/ferhatozcelik/)
-
-## License
-
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-If you find this template helpful, please consider giving it a ⭐️ on GitHub. Your support is greatly appreciated!
+Open the project in Android Studio and run the app configuration. The project uses Kotlin, Jetpack Compose, Material 3, Hilt and Room.
