@@ -1,0 +1,11 @@
+name = "reality-loom-control-center"
+main = "src/index.js"
+compatibility_date = "2026-10-30"
+workers_dev = true
+
+[vars]
+OPENAI_MODEL = "gpt-4.1-mini"
+GITHUB_REPO = "Kawhooped/vivi-app-base"
+GITHUB_BRANCH = "master"
+ALLOW_REPO_WRITES = "false"
+ALLOWED_ORIGIN = "https://kawhooped.github.io"
