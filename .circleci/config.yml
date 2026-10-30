@@ -1,0 +1,35 @@
+version: 2.1
+
+jobs:
+  agent-cycle:
+    docker:
+      - image: cimg/python:3.12
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Run repository scout, research agent, and independent tester
+          command: |
+            set +e
+            python tools/agent_cycle.py
+            scout_status=$?
+            python tools/research_agent.py
+            research_status=$?
+            python tools/test_agent.py
+            test_status=$?
+            printf '%s %s %s\n' "$scout_status" "$research_status" "$test_status" > /tmp/agent-status
+            echo "Scout=$scout_status Research=$research_status Tests=$test_status"
+            exit 0
+      - store_artifacts:
+          path: reports/agent-cycle
+          destination: agent-cycle-reports
+      - run:
+          name: Fail pipeline if any worker failed
+          command: |
+            read scout research tests < /tmp/agent-status
+            test "$scout" -eq 0 && test "$research" -eq 0 && test "$tests" -eq 0
+
+workflows:
+  agent-cycle:
+    jobs:
+      - agent-cycle
