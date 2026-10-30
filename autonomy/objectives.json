@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "purpose": "Build an affordable autonomous development system that advances Reality Loom and its Control Center without requiring repeated user prompts.",
+  "operating_mode": "autonomous_with_approval_gates",
+  "work_budget": {
+    "max_tasks_per_cycle": 2,
+    "max_minutes_per_cycle": 20
+  },
+  "permissions": {
+    "repository_read": true,
+    "public_research": true,
+    "run_tests": true,
+    "create_reports": true,
+    "modify_application_code": false,
+    "deploy": false,
+    "spend_money": false,
+    "modify_account_settings": false
+  },
+  "objectives": [
+    {
+      "id": "A1",
+      "priority": 1,
+      "status": "blocked",
+      "title": "Restore unattended runner execution",
+      "acceptance": [
+        "A scheduled or manually dispatched run obtains a runner",
+        "At least one job step executes",
+        "A report artifact or commit is produced"
+      ],
+      "next": "Inspect GitHub Actions settings and runner allocation failure; use an approved alternate runner if needed."
+    },
+    {
+      "id": "A2",
+      "priority": 2,
+      "status": "pending",
+      "title": "Establish reliable autonomous audit and test cycles",
+      "acceptance": [
+        "Scout, research, and test agents execute in sequence",
+        "Results persist between runs",
+        "Failures are recorded and retried within a bounded budget"
+      ],
+      "depends_on": [
+        "A1"
+      ]
+    },
+    {
+      "id": "A3",
+      "priority": 3,
+      "status": "pending",
+      "title": "Deploy and verify the Control Center gateway",
+      "acceptance": [
+        "Worker health endpoint responds",
+        "Authenticated AI request succeeds",
+        "Read-only repository tools work"
+      ],
+      "depends_on": [
+        "A1"
+      ]
+    },
+    {
+      "id": "A4",
+      "priority": 4,
+      "status": "pending",
+      "title": "Add privacy-conscious traffic analytics",
+      "acceptance": [
+        "Visitor metrics are visible in Control Center",
+        "No unnecessary personal data is collected"
+      ],
+      "depends_on": [
+        "A3"
+      ]
+    },
+    {
+      "id": "A5",
+      "priority": 5,
+      "status": "pending",
+      "title": "Expand bounded agent capabilities",
+      "acceptance": [
+        "Reviewed tool registry",
+        "Path-limited edits",
+        "Independent tests and audit records",
+        "Approval gates for consequential actions"
+      ],
+      "depends_on": [
+        "A2",
+        "A3"
+      ]
+    }
+  ],
+  "state": {
+    "last_completed_task": null,
+    "last_run": null,
+    "notes": [
+      "Do not claim background execution until a real runner run is verified."
+    ]
+  }
+}
