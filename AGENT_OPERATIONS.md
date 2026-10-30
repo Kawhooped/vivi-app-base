@@ -12,11 +12,11 @@ The GitHub Actions workflow runs every six hours and can also be started manuall
 
 ## Optional AI provider configuration
 
-To enable model-based analysis, add these repository Actions secrets:
+To enable model-based analysis, add this repository Actions secret and these Actions variables:
 
 - `LLM_API_KEY`
-- `LLM_API_BASE_URL` (OpenAI-compatible API base URL, without `/chat/completions`)
-- `LLM_MODEL`
+- Actions variable `LLM_API_BASE_URL` (OpenAI-compatible API base URL, without `/chat/completions`)
+- Actions variable `LLM_MODEL`
 
 Without all three, the research worker still performs real GitHub repository discovery and records that model-based analysis was skipped. No provider is hard-coded.
 
