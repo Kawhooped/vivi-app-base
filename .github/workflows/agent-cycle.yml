@@ -8,7 +8,8 @@ on:
     branches: [master]
     paths:
       - ".github/workflows/agent-cycle.yml"
-      - "tools/agent_cycle.py"
+      - "tools/**"
+      - "tests/**"
 
 permissions:
   contents: write
@@ -18,29 +19,44 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  repository-scout:
-    name: Repository Scout
+  agent-organization:
+    name: Scout, Research and Independent Verification
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 25
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Inspect existing project assets
+
+      - name: Repository Scout
         run: python tools/agent_cycle.py
-      - name: Save the agent report
+
+      - name: AI Research Agent
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_API_BASE_URL: ${{ vars.LLM_API_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+        run: python tools/research_agent.py
+
+      - name: Independent Test Agent
+        run: python tools/test_agent.py
+
+      - name: Commit agent reports
+        if: always()
         run: |
           git config user.name "reality-loom-agent[bot]"
           git config user.email "reality-loom-agent[bot]@users.noreply.github.com"
-          git add reports/agent-cycle/latest.md
+          git add reports/agent-cycle/
           if git diff --cached --quiet; then
             echo "No report changes."
           else
-            git commit -m "chore(agent): update repository scout report"
+            git commit -m "chore(agent): publish scout research and test reports"
             git push
           fi
