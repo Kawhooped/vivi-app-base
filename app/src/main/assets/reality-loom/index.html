@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reality Loom · Physical Sandbox</title>
+<style>
+:root{color-scheme:dark;--bg:#080d16;--panel:#111b2a;--line:#26374b;--text:#e9f0f8;--muted:#91a4ba;--accent:#7dd3fc;--good:#86efac}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,sans-serif}
+header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+h1{font-size:18px;margin:0;letter-spacing:.08em}h1 span{color:var(--accent)}.sub{color:var(--muted);font-size:12px}
+main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;padding:14px;max-width:1500px;margin:auto}
+#viewport{position:relative;min-height:65vh;background:radial-gradient(ellipse at 50% 30%,#172b40,#080d16 70%);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+canvas{display:block;width:100%;height:100%;position:absolute;inset:0}
+.overlay{position:absolute;z-index:2;left:14px;top:12px;pointer-events:none;color:var(--muted);font-size:12px}
+#inspector{position:absolute;z-index:3;bottom:12px;left:12px;max-width:min(320px,calc(100% - 24px));padding:10px 12px;background:#0b1421dd;border:1px solid var(--line);border-radius:10px;display:none}
+aside{display:flex;flex-direction:column;gap:12px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+h2{font-size:13px;margin:0 0 10px;color:var(--accent);letter-spacing:.05em;text-transform:uppercase}
+.controls{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+button{border:1px solid #38516a;background:#1a2a3d;color:var(--text);border-radius:8px;padding:9px 10px;font-weight:600;cursor:pointer}
+button.primary{background:#16445a;border-color:#28708e}button:disabled{opacity:.45;cursor:default}
+label{display:flex;justify-content:space-between;gap:12px;color:var(--muted);margin:10px 0 5px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.metricgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.metric{background:#0b1421;border-radius:8px;padding:9px}.metric b{display:block;font-size:18px}.metric span{color:var(--muted);font-size:11px}
+.module{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #243348}.module:last-child{border:0}.tag{color:var(--good);font-size:11px}
+small,.muted{color:var(--muted)}#status{color:var(--good);font-size:12px}
+@media(max-width:850px){main{grid-template-columns:1fr}#viewport{min-height:54vh}aside{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.panel.modules{grid-column:1/-1}}
+@media(max-width:520px){aside{display:flex}header{padding:14px}main{padding:8px;gap:8px}#viewport{min-height:52vh}}
+</style>
+</head>
+<body>
+<header><div><h1>REALITY <span>LOOM</span></h1><div class="sub">Modular simulation platform · prototype 0.1</div></div><div id="status">Initializing physics…</div></header>
+<main>
+<section id="viewport"><div class="overlay">3D PHYSICAL SPACE · drag to orbit · scroll to zoom · tap an object to inspect</div><div id="inspector"></div></section>
+<aside>
+<section class="panel"><h2>Simulation controls</h2><div class="controls">
+<button id="toggle" class="primary">Pause</button><button id="step">Step frame</button>
+<button id="reset">Reset world</button><button id="add">Add body</button>
+<button id="save">Save world</button><button id="load">Load world</button>
+</div><label>Time scale <b id="speedLabel">1.0×</b></label><input id="speed" type="range" min="0" max="3" step=".1" value="1">
+<label>Gravity <b id="gravityLabel">9.8</b></label><input id="gravity" type="range" min="0" max="20" step=".1" value="9.8">
+<label>Spawn count <b id="countLabel">37</b></label><input id="count" type="range" min="1" max="100" step="1" value="37">
+</section>
+<section class="panel"><h2>Live telemetry</h2><div class="metricgrid">
+<div class="metric"><b id="bodyCount">0</b><span>Rigid bodies</span></div><div class="metric"><b id="simTime">0.0s</b><span>Simulated time</span></div>
+<div class="metric"><b id="frameCount">0</b><span>Physics steps</span></div><div class="metric"><b id="fps">—</b><span>Render FPS</span></div>
+</div></section>
+<section class="panel modules"><h2>Module registry</h2><div id="modules"></div><p class="sub" style="margin-top:10px">Modules are independently replaceable. Only the physical-space and rigid-body adapter is active in this prototype.</p></section>
+<section class="panel"><h2>Build status</h2><div class="sub">Engine: Rapier 3D physics<br>Renderer: Three.js<br>Clock: fixed 1/60 s physics step<br>Persistence: local JSON snapshot<br>Platform: browser-first, Android WebView-compatible</div></section>
+</aside>
+</main>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js';
+import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.17.3/+esm';
+
+const $=id=>document.getElementById(id);
+const registry=[
+['Physical space','coordinates, transforms, geometry','ACTIVE'],
+['Rigid-body physics','mass, gravity, collision, friction','ACTIVE'],
+['Simulation clock','fixed steps, pause, speed, replay','ACTIVE'],
+['Entity model','identity, properties, state, history','ACTIVE'],
+['Soft-body physics','deformation, cloth, tissue','PLANNED'],
+['Fluid dynamics','water, air, particles','PLANNED'],
+['Terrain and environment','heightfields, weather, resources','PLANNED'],
+['Agents and behavior','sensing, goals, navigation','PLANNED'],
+['Biology and evolution','growth, mutation, inheritance','PLANNED'],
+['Social systems','groups, trade, institutions','PLANNED'],
+['Robotics','joints, motors, sensors','PLANNED'],
+['Experiment recorder','snapshots, branches, comparisons','PLANNED']
+];
+$('modules').innerHTML=registry.map(([n,d,s])=>'<div class="module"><div><b>'+n+'</b><div class="sub">'+d+'</div></div><span class="tag">'+s+'</span></div>').join('');
+
+let world,renderer,scene,camera,orbit,ground,paused=false,simTime=0,steps=0,accumulator=0,last=performance.now(),fpsFrames=0,fpsAt=last;
+const entities=[];const fixedDt=1/60;
+const viewport=$('viewport');
+const sceneObjects=new Map();
+
+function setStatus(s){$('status').textContent=s}
+function createBody(x,y,z,r=0.35,mass=1){
+ const desc=RAPIER.RigidBodyDesc.dynamic().setTranslation(x,y,z).setLinearDamping(.08).setAngularDamping(.12);
+ const body=world.createRigidBody(desc);
+ world.createCollider(RAPIER.ColliderDesc.ball(r).setRestitution(.42).setFriction(.65).setDensity(mass),body);
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(r,20,14),new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL((entities.length*.618)%1,.68,.58),roughness:.45,metalness:.12}));
+ mesh.castShadow=true;scene.add(mesh);
+ const item={id:'entity-'+String(entities.length+1).padStart(3,'0'),body,mesh,radius:r,mass};
+ entities.push(item);sceneObjects.set(mesh,item);return item;
+}
+function sync(){for(const e of entities){const p=e.body.translation(),q=e.body.rotation();e.mesh.position.set(p.x,p.y,p.z);e.mesh.quaternion.set(q.x,q.y,q.z,q.w)}}
+function initWorld(){
+ entities.splice(0).forEach(e=>{scene.remove(e.mesh);sceneObjects.delete(e.mesh)});
+ world=new RAPIER.World({x:0,y:-Number($('gravity').value),z:0});
+ const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.25,0));
+ world.createCollider(RAPIER.ColliderDesc.cuboid(12,.25,12).setFriction(.9),floorBody);
+ const n=Number($('count').value);
+ for(let i=0;i<n;i++){const x=((i%7)-3)*.85,z=(Math.floor(i/7)-2)*.85,y=1.1+Math.floor(i/21)*.9+Math.random()*.3;createBody(x,y,z,.27+Math.random()*.13,.5+Math.random()*2)}
+ simTime=0;steps=0;accumulator=0;sync();updateStats();
+}
+async function boot(){
+ await RAPIER.init();
+ renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(viewport.clientWidth,viewport.clientHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;viewport.prepend(renderer.domElement);
+ scene=new THREE.Scene();scene.background=new THREE.Color(0x09111c);
+ camera=new THREE.PerspectiveCamera(55,viewport.clientWidth/viewport.clientHeight,.1,200);camera.position.set(10,9,13);
+ orbit=new OrbitControls(camera,renderer.domElement);orbit.enableDamping=true;orbit.target.set(0,2,0);
+ scene.add(new THREE.HemisphereLight(0xb9ddff,0x263344,2));
+ const light=new THREE.DirectionalLight(0xffffff,2.5);light.position.set(7,12,5);light.castShadow=true;scene.add(light);
+ const grid=new THREE.GridHelper(24,24,0x36516a,0x203246);grid.position.y=-.245;scene.add(grid);
+ const floor=new THREE.Mesh(new THREE.PlaneGeometry(24,24),new THREE.MeshStandardMaterial({color:0x101d2a,roughness:.9,metalness:.05}));floor.rotation.x=-Math.PI/2;floor.position.y=-.26;floor.receiveShadow=true;scene.add(floor);
+ initWorld();setStatus('Physics ready');
+ renderer.setAnimationLoop(frame);
+ window.addEventListener('resize',resize);
+ renderer.domElement.addEventListener('pointerdown',pick);
+}
+function resize(){if(!renderer)return;const w=viewport.clientWidth,h=viewport.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix()}
+function frame(now){
+ const elapsed=Math.min((now-last)/1000,.05);last=now;
+ if(!paused){
+  accumulator+=elapsed*Number($('speed').value);
+  let catchup=0;
+  while(accumulator>=fixedDt && catchup<8){
+   world.timestep=fixedDt;world.gravity={x:0,y:-Number($('gravity').value),z:0};
+   world.step();simTime+=fixedDt;steps++;accumulator-=fixedDt;catchup++;
+  }
+ } else { accumulator=0; }
+ sync();orbit.update();renderer.render(scene,camera);fpsFrames++;
+ if(now-fpsAt>500){$('fps').textContent=Math.round(fpsFrames*1000/(now-fpsAt));fpsFrames=0;fpsAt=now;updateStats()}
+}
+function updateStats(){$('bodyCount').textContent=entities.length;$('simTime').textContent=simTime.toFixed(1)+'s';$('frameCount').textContent=steps}
+function pick(ev){const rect=renderer.domElement.getBoundingClientRect(),mouse=new THREE.Vector2((ev.clientX-rect.left)/rect.width*2-1,-((ev.clientY-rect.top)/rect.height)*2+1),ray=new THREE.Raycaster();ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(entities.map(e=>e.mesh))[0];const box=$('inspector');if(!hit){box.style.display='none';return}const e=sceneObjects.get(hit.object),p=e.body.translation(),v=e.body.linvel();box.style.display='block';box.innerHTML='<b>'+e.id+'</b><br>Position: '+[p.x,p.y,p.z].map(n=>n.toFixed(2)).join(', ')+'<br>Velocity: '+[v.x,v.y,v.z].map(n=>n.toFixed(2)).join(', ')+'<br>Mass: '+e.mass.toFixed(2)+' · radius: '+e.radius.toFixed(2)}
+function save(){const data={version:1,simTime,steps,gravity:Number($('gravity').value),entities:entities.map(e=>({id:e.id,position:e.body.translation(),rotation:e.body.rotation(),velocity:e.body.linvel(),angularVelocity:e.body.angvel(),radius:e.radius,mass:e.mass}))};localStorage.setItem('reality-loom-save',JSON.stringify(data));setStatus('World saved locally')}
+function load(){const raw=localStorage.getItem('reality-loom-save');if(!raw){setStatus('No saved world found');return}try{const data=JSON.parse(raw);$('gravity').value=data.gravity;$('gravityLabel').textContent=Number(data.gravity).toFixed(1);entities.splice(0).forEach(e=>scene.remove(e.mesh));world=new RAPIER.World({x:0,y:-data.gravity,z:0});const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.25,0));world.createCollider(RAPIER.ColliderDesc.cuboid(12,.25,12).setFriction(.9),floorBody);for(const item of data.entities){const e=createBody(item.position.x,item.position.y,item.position.z,item.radius,item.mass);e.body.setRotation(item.rotation,true);e.body.setLinvel(item.velocity,true);e.body.setAngvel(item.angularVelocity,true)}simTime=data.simTime;steps=data.steps;accumulator=0;sync();updateStats();setStatus('World restored')}catch(e){setStatus('Save file could not be read')}}
+$('toggle').onclick=()=>{paused=!paused;$('toggle').textContent=paused?'Resume':'Pause'};
+$('step').onclick=()=>{if(!paused)paused=true;$('toggle').textContent='Resume';world.timestep=fixedDt;world.step();simTime+=fixedDt;steps++;sync();updateStats()};
+$('reset').onclick=()=>{initWorld();setStatus('World reset')};
+$('add').onclick=()=>{createBody((Math.random()-.5)*5,5+Math.random()*2,(Math.random()-.5)*5,.35,1);updateStats()};
+$('save').onclick=save;$('load').onclick=load;
+$('speed').oninput=e=>$('speedLabel').textContent=Number(e.target.value).toFixed(1)+'×';
+$('gravity').oninput=e=>$('gravityLabel').textContent=Number(e.target.value).toFixed(1);
+$('count').oninput=e=>$('countLabel').textContent=e.target.value;
+boot().catch(err=>{console.error(err);setStatus('Could not initialize 3D engine. Check network/WebGL.')});
+</script>
+</body></html>
