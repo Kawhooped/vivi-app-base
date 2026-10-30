@@ -1,5 +1,6 @@
 package com.ferhatozcelik.jetpackcomposetemplate.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,8 +22,8 @@ import androidx.navigation.NavHostController
 private data class Device(val name: String, val purpose: String, val pipeline: String, val status: String)
 
 private val devices = listOf(
-    Device("Story Device", "Turn prompts into coherent worlds, characters and events. Track rules, conflicts and consequences as the story develops.", "Prompt → Interpret → Build → Simulate → Continue", "FOUNDATION"),
-    Device("City Simulator", "Represent a city as connected systems: residents, housing, work, transit, health, education, environment and public resources.", "Observe → Model → Change → Simulate → Compare", "PROTOTYPE"),
+    Device("Story Device", "Turn prompts into coherent worlds, characters and events. Track rules, conflicts and consequences as the story develops.", "Prompt → Interpret → Build → Simulate → Continue", "READY TO USE"),
+    Device("City Simulator", "Represent a city as connected systems: residents, housing, work, transit, health, education, environment and public resources.", "Observe → Model → Change → Simulate → Compare", "NEXT"),
     Device("World Builder", "Create reusable environments with entities, properties, relationships, rules, states and events.", "Define → Populate → Connect → Inspect", "PLANNED"),
     Device("Decision Lab", "Compare independent proposals, test assumptions and record predicted outcomes against observed results.", "Question → Propose → Challenge → Decide → Evaluate", "PLANNED")
 )
@@ -47,7 +48,10 @@ fun MainScreen(viewModel: HomeViewModel = hiltViewModel(), navController: NavHos
         }
         items(devices) { device ->
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().then(
+                    if (device.name == "Story Device") Modifier.clickable { navController.navigate("story_device") }
+                    else Modifier
+                ),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -55,6 +59,7 @@ fun MainScreen(viewModel: HomeViewModel = hiltViewModel(), navController: NavHos
                     Text(device.name, style = MaterialTheme.typography.titleLarge)
                     Text(device.purpose, style = MaterialTheme.typography.bodyMedium)
                     Text(device.pipeline, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                    if (device.name == "Story Device") Text("OPEN DEVICE  →", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
