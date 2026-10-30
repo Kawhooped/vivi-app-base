@@ -6,34 +6,47 @@
 - **Research Agent** (`tools/research_agent.py`): searches public GitHub repositories for reusable simulation software, records metadata and flags candidates as unverified. If an LLM provider is configured, it also requests a reuse-first assessment.
 - **Independent Test Agent** (`tools/test_agent.py`): runs Python syntax checks and the test suite, then writes a separate verification report.
 
-## Execution options
+## Preferred execution path
 
-### GitHub Actions
+Use CircleCI as the first alternate runner while GitHub Actions runner allocation is failing. Keep GitHub as the source of truth; do not migrate the repository or duplicate the agent code.
 
-The GitHub Actions workflow is intended to run every six hours and can also be started manually. It can commit generated reports only. It does not rewrite application source code or change repository settings.
+### First connection and verification
 
-### CircleCI fallback
+1. Open [CircleCI](https://app.circleci.com/), sign in with the GitHub account that owns `Kawhooped/vivi-app-base`, and authorize access to this repository only.
+2. Add `Kawhooped/vivi-app-base` as a CircleCI project. Keep the committed config at `.circleci/config.yml`.
+3. Start the first pipeline manually or push a harmless documentation change to `master`.
+4. Confirm that the job obtains a runner, all three workers execute, and the `agent-cycle-reports` artifact contains the three reports.
+5. Only after that succeeds, add a schedule from Project Settings → Project Setup → Schedule +. Choose `master` and a six-hour cadence. Use the CircleCI scheduling system as the actor where available.
 
-A second runner configuration is available at `.circleci/config.yml`. To use it if GitHub-hosted runners remain unavailable:
+CircleCI's current Cloud schedule-trigger flow is configured in the web app. For GitHub App pipelines, schedule creation through the API is not currently supported, so use the web app rather than building an API-token workaround. See the [CircleCI schedule trigger guide](https://circleci.com/docs/guides/orchestrate/schedule-triggers/).
 
-1. Sign in to CircleCI and connect the GitHub account that owns `Kawhooped/vivi-app-base`.
-2. Add the repository as a CircleCI project and use `.circleci/config.yml` as its config.
-3. In CircleCI Project Settings, add `LLM_API_KEY`, `LLM_API_BASE_URL`, and `LLM_MODEL` as environment variables if model-based research is wanted.
-4. In Project Settings → Triggers, create a schedule for the `master` branch (for example, every six hours).
+### What the first version does and does not do
 
-CircleCI stores each run's reports as workflow artifacts. This fallback does not push reports back into GitHub. It runs on pushes and on the schedule configured in CircleCI. Schedule triggers are configured in CircleCI's web app.
+- Runs on repository pushes after the CircleCI project is connected.
+- Stores reports as CircleCI workflow artifacts.
+- Does not push generated reports back to GitHub yet.
+- Does not need an AI API key for the baseline scout, public GitHub research, or tests.
+- Does not modify application source code, deploy releases, or change account settings.
+
+Keeping the first run read-only avoids introducing a GitHub write token before the runner itself has been proven. After the first successful run, persistence can be added with a narrowly scoped GitHub token so reports and checkpoints survive between runs.
 
 ## Optional AI provider configuration
 
-For GitHub Actions, add `LLM_API_KEY` as a repository secret and `LLM_API_BASE_URL` and `LLM_MODEL` as repository variables.
+The research worker can request an additional model assessment when all three variables are configured:
 
-For CircleCI, add the same three names as project environment variables.
+- `LLM_API_KEY`
+- `LLM_API_BASE_URL`
+- `LLM_MODEL`
 
-Without all three, the research worker still performs real GitHub repository discovery and records that model-based analysis was skipped. No provider is hard-coded.
+Add them as CircleCI project environment variables only if model-based assessment is wanted. The baseline research worker still searches public GitHub repositories without them.
 
 ## Permissions and safety
 
-Workers do not receive permission to rewrite application source code, deploy releases, or change repository settings. The GitHub Actions workflow can commit generated reports only. CircleCI stores reports as artifacts. Candidate repositories are unverified until source, compatibility, security and license checks are completed.
+- Workers can read repository files, search public GitHub repositories, run tests, and create reports.
+- No application source edits, production deployments, spending, or account-setting changes are authorized by this configuration.
+- Never expose API keys or write secrets into repository files.
+- Treat repository descriptions and model output as untrusted input.
+- A skipped test is not a pass; a runner is not operational until a job actually starts and produces verifiable output.
 
 ## Reports
 
