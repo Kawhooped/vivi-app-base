@@ -34,7 +34,7 @@ glide = "4.16.0"
 google-services = "4.4.0"
 firebase-bom = "32.3.1"
 crashlytics = "2.9.9"
-ksp = "1.9.0-1.0.12"
+ksp = "1.9.10-1.0.13"
 squareup-logging-interceptor = "4.7.2"
 viewpager2 = "1.0.0"
 
