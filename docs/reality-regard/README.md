@@ -149,3 +149,8 @@ Do not use agent agreement, verbosity, novelty or confidence as standalone measu
 ## Initial implementation boundary
 
 This document defines the research protocol only. It does not authorize autonomous edits to the Android application, automatic deployment, or treating generated simulations as validated descriptions of the physical world. Implement the first cycle as a separate, testable module and preserve the existing Reality Loom behavior.
+
+
+## Implementation planning
+
+See [PLANNING.md](PLANNING.md) for the system architecture, data flow, agent contracts, orchestration state machine, first benchmark experiment, evaluation gates, test strategy, milestones, GitHub work breakdown and risk controls.
